@@ -2,7 +2,7 @@
 const defaultConsts = {
     config: {
         embedColour: '#FF0000',
-        presence: '/help | elite-bot.com',
+        presence: '/help | ?',
         leaveOnEmpty: false,
         leaveOnEmptyCooldown: 0,
         leaveOnEnd: false,
