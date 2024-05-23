@@ -1,223 +1,218 @@
 const discord = require("discord.js");
+
 module.exports = {
     data: new discord.SlashCommandBuilder()
         .setName("avatar")
         .setDescription("display the avatar")
-        .addUserOption(user => user
+        .addUserOption(option => option
             .setName("user")
             .setDescription("select the user")
         ),
     /**
      * @param {discord.ChatInputCommandInteraction} interaction
      */
-
     async execute(interaction) {
-        let userID = interaction.options.getUser("user") || interaction.user;
-        await interaction.deferReply({ ephemeral: false })
-        await this.displayAvatar(interaction, userID)
+        const user = interaction.options.getUser("user") || interaction.user;
+        await interaction.deferReply({ ephemeral: false });
+        await this.displayAvatar(interaction, user);
     },
-    async displayAvatar(interaction, userID) {
-        const sizeLanguage = "Size";
-        const serverAvatarLanguage = "Server Avatar";
-        const displayAvatarLanguage = "Displayed Avatar";
-        const displayBannerLanguage = "Displayed Banner";
-        const animatedLanguage = "Animated";
-        const formatLanguage = "Format";
-        const fieldTitleLanguage = "General"
-        const errorLanguage = "Only {X} can use these selectMenus/Buttons"
-        const falseEmoji = "❌";
-        const trueEmoji = "✅";
-        const changeEmoji = "🔁";
 
-      const user = await interaction.client.users.fetch(userID, { force: true });
-        const memberExists = await interaction.guild.members.fetch(userID).then(() => true).catch(() => false);
-        const member = await interaction.guild.members.fetch(memberExists ? user.id : interaction.user.id);
+    async displayAvatar(interaction, user) {
+        const languages = {
+            size: "Size",
+            serverAvatar: "Server Avatar",
+            displayAvatar: "Displayed Avatar",
+            displayBanner: "Displayed Banner",
+            animated: "Animated",
+            format: "Format",
+            general: "General",
+            error: "Only {X} can use these selectMenus/Buttons"
+        };
 
+        const emojis = {
+            false: "❌",
+            true: "✅",
+            change: "🔁"
+        };
+
+        const userFetched = await interaction.client.users.fetch(user.id, { force: true });
+        const memberExists = await interaction.guild.members.fetch(user.id).then(() => true).catch(() => false);
+        const member = memberExists ? await interaction.guild.members.fetch(user.id) : null;
+
+        const sizes = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
+        const formats = ['png', 'webp', 'jpg', 'jpeg', ...(userFetched.displayAvatarURL().includes(".gif") ? ["gif"] : [])];
         let type = "avatar";
-        let sizes = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096];
-        let formats = ['png', 'webp', 'jpg', 'jpeg', ...(user.displayAvatarURL().includes(".gif") ? ["gif"] : [])];
         let change = "user";
 
         const embed = new discord.EmbedBuilder()
-            .setAuthor({ name: user.tag, iconURL: user.displayAvatarURL({ size: 1024 }) })
-        embed.addFields({
-            name: `${fieldTitleLanguage}`,
-            value: [
-                `> **${animatedLanguage}: ${user.displayAvatarURL().includes(".gif") ? trueEmoji : falseEmoji}**`,
-                `> **${serverAvatarLanguage}: ${falseEmoji}**`
-            ].filter(function (e) { return e }).join("\n")
-        })
-        embed.setColor(interaction.member.displayColor)
-            .setImage(user.displayAvatarURL({ size: 1024 }))
-        const button = new discord.ActionRowBuilder().addComponents(new discord.ButtonBuilder().setCustomId("change-to-banner").setLabel("Banner").setEmoji(changeEmoji).setStyle("Primary").setDisabled(!user.banner), new discord.ButtonBuilder().setURL(user.displayAvatarURL({ size: 1024 })).setLabel("Avatar Link").setStyle("Link"))
-        const size_menu = new discord.ActionRowBuilder().addComponents(new discord.StringSelectMenuBuilder().addOptions(sizes.map(size => ({ label: `${size}x${size}`, value: size.toString() }))).setCustomId("size_menu").setPlaceholder(`${sizeLanguage}: 1024x1024`).setMaxValues(1).setDisabled(!user.avatar))
-        const format_menu = new discord.ActionRowBuilder().addComponents(new discord.StringSelectMenuBuilder().addOptions(formats.map(format => ({ label: format.toUpperCase(), value: format }))).setCustomId("format_menu").setPlaceholder(`${formatLanguage}: ${user.displayAvatarURL().includes(".gif") ? "GIF" : "WEBP"}`).setMaxValues(1).setDisabled(!user.avatar))
-        const change_menu = new discord.ActionRowBuilder().addComponents(new discord.StringSelectMenuBuilder().addOptions({ label: "Server", value: "server", emoji: changeEmoji }).setCustomId("change_menu").setPlaceholder(`${displayAvatarLanguage}: User`).setMaxValues(1))
-        if (memberExists === false) {
-            await change_menu.components[0].setDisabled(true)
-        } else {
-            if (member.displayAvatarURL() === user.displayAvatarURL()) {
-                await change_menu.components[0].setDisabled(true)
-            } else {
-                await change_menu.components[0].setDisabled(false)
-            }
+            .setAuthor({ name: userFetched.tag, iconURL: userFetched.displayAvatarURL({ size: 1024 }) })
+            .addFields({
+                name: languages.general,
+                value: [
+                    `> **${languages.animated}: ${userFetched.displayAvatarURL().includes(".gif") ? emojis.true : emojis.false}**`,
+                    `> **${languages.serverAvatar}: ${emojis.false}**`
+                ].join("\n")
+            })
+            .setColor(interaction.member.displayColor)
+            .setImage(userFetched.displayAvatarURL({ size: 1024 }));
+
+        const buttons = new discord.ActionRowBuilder().addComponents(
+            new discord.ButtonBuilder().setCustomId("change-to-banner").setLabel("Banner").setEmoji(emojis.change).setStyle("Primary").setDisabled(!userFetched.banner),
+            new discord.ButtonBuilder().setURL(userFetched.displayAvatarURL({ size: 1024 })).setLabel("Avatar Link").setStyle("Link")
+        );
+
+        const sizeMenu = new discord.ActionRowBuilder().addComponents(
+            new discord.StringSelectMenuBuilder().addOptions(
+                sizes.map(size => ({ label: `${size}x${size}`, value: size.toString() }))
+            ).setCustomId("size_menu").setPlaceholder(`${languages.size}: 1024x1024`).setMaxValues(1).setDisabled(!userFetched.avatar)
+        );
+
+        const formatMenu = new discord.ActionRowBuilder().addComponents(
+            new discord.StringSelectMenuBuilder().addOptions(
+                formats.map(format => ({ label: format.toUpperCase(), value: format }))
+            ).setCustomId("format_menu").setPlaceholder(`${languages.format}: ${userFetched.displayAvatarURL().includes(".gif") ? "GIF" : "WEBP"}`).setMaxValues(1).setDisabled(!userFetched.avatar)
+        );
+
+        const changeMenu = new discord.ActionRowBuilder().addComponents(
+            new discord.StringSelectMenuBuilder().addOptions(
+                { label: "Server", value: "server", emoji: emojis.change }
+            ).setCustomId("change_menu").setPlaceholder(`${languages.displayAvatar}: User`).setMaxValues(1)
+        );
+
+        if (!memberExists || member.displayAvatarURL() === userFetched.displayAvatarURL()) {
+            changeMenu.components[0].setDisabled(true);
         }
-        const e = await interaction.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-        e.createMessageComponentCollector({ idle: 3e5 })
-            .on("collect", async (i) => {
-                await i.deferUpdate()
-                var size = 1024;
-                var format = user.avatar.includes("a_") ? "gif" : embed.data.image.url.split('.').pop().split("?")[0] || "webp";
-                if (i.user.id === interaction.user.id) {
-                    if (type === "avatar") {
-                        // ---------------Avatar--------------------------//
-                        size = embed.data.image.url.split("?size=")[1] || 1024
-                        format = embed.data.image.url.split('.').pop().split("?")[0] || "webp";
-                        if (i.customId === "change-to-banner") {
-                            format = user.banner.includes("a_") ? "gif" : "webp";
-                            type = "banner"
-                            change = "user";
-                            let formats1 = ['png', 'webp', 'jpg', 'jpeg', ...(user.bannerURL().includes(".gif") ? ['gif'] : [])];
-                            await button.components[0].setCustomId("change-to-avatar").setLabel("Avatar").setEmoji(changeEmoji)
-                            await format_menu.components[0].setOptions(formats1.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                            await button.components[1].setURL(user.bannerURL({ size: Number(size), extension: format, forceStatic: true })).setLabel("Banner Link")
-                            await change_menu.components[0].setPlaceholder(`${displayBannerLanguage}: User`).setDisabled(true)
-                            embed.setFields({
-                                name: `${fieldTitleLanguage}`,
-                                value: [
-                                    `> **${animatedLanguage}: ${user.bannerURL().includes(".gif") ? trueEmoji : falseEmoji}**`,
-                                ].filter(function (e) { return e }).join("\n")
-                            })
-                            embed.setImage(user.bannerURL({ forceStatic: true, extension: format, size: Number(size) }))
-                            await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                        } if (i.customId === "change_menu") {
-                            if (i.values[0] === "server") {
-                                let formats1 = ['png', 'webp', 'jpg', 'jpeg', ...(member.displayAvatarURL().includes(".gif") ? ['gif'] : [])];
-                                change = "server"
-                                format = member.displayAvatarURL().includes("a_") ? "gif" : "webp";
-                                embed.setFields({
-                                    name: `${fieldTitleLanguage}`,
-                                    value: [
-                                        `> **${animatedLanguage}: ${member.displayAvatarURL().includes(".gif") ? trueEmoji : falseEmoji}**`,
-                                        `> **${serverAvatarLanguage}: ${trueEmoji}**`
-                                    ].filter(function (e) { return e }).join("\n")
-                                })
-                                embed.setImage(member.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await change_menu.components[0].setOptions({ label: "User", value: "user", emoji: changeEmoji }).setPlaceholder(`${displayAvatarLanguage}: Server`)
-                                await format_menu.components[0].setOptions(formats1.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                                await button.components[1].setURL(member.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
 
-                            } else if (i.values[0] === "user") {
-                                let formats2 = ['png', 'webp', 'jpg', 'jpeg', ...(user.displayAvatarURL().includes(".gif") ? ['gif'] : [])];
-                                change = "user"
-                                format = user.displayAvatarURL().includes("a_") ? "gif" : "webp";
-                                embed.setFields({
-                                    name: `${fieldTitleLanguage}`,
-                                    value: [
-                                        `> **${animatedLanguage}: ${user.avatarURL().includes(".gif") ? trueEmoji : falseEmoji}**`,
-                                        `> **${serverAvatarLanguage}: ${falseEmoji}**`
-                                    ].filter(function (e) { return e }).join("\n")
-                                })
-                                embed.setImage(user.avatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await change_menu.components[0].setOptions({ label: "Server", value: "server", emoji: changeEmoji}).setPlaceholder(`${displayAvatarLanguage}: User`)
-                                await format_menu.components[0].setOptions(formats2.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                                await button.components[1].setURL(user.avatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            }
-                        } else if (i.customId === "size_menu") {
-                            size = i.values[0];
-                            if (change === "user") {
-                                embed.setImage(user.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await button.components[1].setURL(user.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await size_menu.components[0].setPlaceholder(`${sizeLanguage}: ${size}x${size}`)
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            } else if (change === "server") {
-                                embed.setImage(member.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await button.components[1].setURL(member.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await size_menu.components[0].setPlaceholder(`${sizeLanguage}: ${size}x${size}`)
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            }
-                        } else if (i.customId === "format_menu") {
-                            var format = i.values[0];
-                            size = embed.data.image.url.split("?size=")[1]
-                            if (change === "user") {
-                                embed.setImage(user.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await button.components[1].setURL(user.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await format_menu.components[0].setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            } else if (change === "server") {
-                                embed.setImage(member.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await button.components[1].setURL(member.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await format_menu.components[0].setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            }
-                        }
-                        // ---------------Avatar--------------------------//
+        const message = await interaction.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+        const collector = message.createMessageComponentCollector({ idle: 3e5 });
 
-                        // ---------------Banner--------------------------//
-                    } else if (type === "banner") {
-                        size = embed.data.image.url.split("?size=")[1] || 1024
-                        format = embed.data.image.url.split('.').pop().split("?")[0] || "webp";
-                        if (i.customId === "change-to-avatar") {
-                            format = user.displayAvatarURL().includes("a_") ? "gif" : "webp";
-                            type = "avatar"
-                            change = "user";
-                            let formats3 = ['png', 'webp', 'jpg', 'jpeg', ...(user.displayAvatarURL().includes(".gif") ? ['gif'] : [])];
-                            await button.components[0].setCustomId("change-to-banner").setLabel("Banner").setEmoji(changeEmoji)
-                            await format_menu.components[0].setOptions(formats3.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                            await button.components[1].setURL(user.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true })).setLabel("Avatar Link")
-                            await change_menu.components[0].setPlaceholder(`${displayAvatarLanguage}: User`).setOptions({ label: "Server", value: "server", emoji: changeEmoji})
-                            if (memberExists === false) {
-                                await change_menu.components[0].setDisabled(true)
-                            } else {
-                                if (member.displayAvatarURL() === user.displayAvatarURL()) {
-                                    await change_menu.components[0].setDisabled(true)
-                                } else {
-                                    await change_menu.components[0].setDisabled(false)
-                                }
-                            }
-                            embed.setFields({
-                                name: `${fieldTitleLanguage}`,
-                                value: [
-                                    `> **${animatedLanguage}: ${user.displayAvatarURL().includes(".gif") ? trueEmoji : falseEmoji}**`,
-                                    `> **${serverAvatarLanguage}: ${falseEmoji}**`
-                                ].filter(function (e) { return e }).join("\n")
-                            })
-                            embed.setImage(user.displayAvatarURL({ forceStatic: true, extension: format, size: Number(size) }))
-                            await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                        } if (i.customId === "size_menu") {
-                            size = i.values[0];
-                            if (change === "user") {
-                                embed.setImage(user.bannerURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await button.components[1].setURL(user.bannerURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await size_menu.components[0].setPlaceholder(`${sizeLanguage}: ${size}x${size}`)
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            }
-                        } else if (i.customId === "format_menu") {
-                            var format = i.values[0];
-                            size = embed.data.image.url.split("?size=")[1]
-                            if (change === "user") {
-                                embed.setImage(user.bannerURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await button.components[1].setURL(user.bannerURL({ size: Number(size), extension: format, forceStatic: true }))
-                                await format_menu.components[0].setPlaceholder(`${formatLanguage}: ${format.toUpperCase()}`)
-                                await i.editReply({ embeds: [embed], components: [size_menu, format_menu, change_menu, button] })
-                            }
-                        }
-                        // ---------------Banner--------------------------//
-                    }
-                } else {
-                    let X = `${interaction.user.toString()}`
-                    await i.followUp({ content: `${errorLanguage.replace("{X}", X)}`, ephemeral: true })
+        collector.on("collect", async (i) => {
+            await i.deferUpdate();
+            let size = 1024;
+            let format = embed.data.image.url.split('.').pop().split("?")[0] || "webp";
+
+            if (i.user.id !== interaction.user.id) {
+                const errorText = languages.error.replace("{X}", interaction.user.toString());
+                await i.followUp({ content: errorText, ephemeral: true });
+                return;
+            }
+
+            if (type === "avatar") {
+                if (i.customId === "change-to-banner") {
+                    type = "banner";
+                    change = "user";
+                    const bannerFormats = ['png', 'webp', 'jpg', 'jpeg', ...(userFetched.bannerURL().includes(".gif") ? ['gif'] : [])];
+                    const bannerFormat = userFetched.bannerURL().includes("a_") ? "gif" : "webp";
+
+                    buttons.components[0].setCustomId("change-to-avatar").setLabel("Avatar").setEmoji(emojis.change);
+                    formatMenu.components[0].setOptions(bannerFormats.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${languages.format}: ${bannerFormat.toUpperCase()}`);
+                    buttons.components[1].setURL(userFetched.bannerURL({ size: Number(size), extension: bannerFormat, forceStatic: true })).setLabel("Banner Link");
+                    changeMenu.components[0].setPlaceholder(`${languages.displayBanner}: User`).setDisabled(true);
+
+                    embed.setFields({
+                        name: languages.general,
+                        value: `> **${languages.animated}: ${userFetched.bannerURL().includes(".gif") ? emojis.true : emojis.false}**`
+                    });
+                    embed.setImage(userFetched.bannerURL({ forceStatic: true, extension: bannerFormat, size: Number(size) }));
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+                } else if (i.customId === "change_menu") {
+                    const selected = i.values[0];
+                    const targetUser = selected === "server" ? member : userFetched;
+                    const userType = selected === "server" ? "Server" : "User";
+                    const userFormats = ['png', 'webp', 'jpg', 'jpeg', ...(targetUser.displayAvatarURL().includes(".gif") ? ['gif'] : [])];
+                    const userFormat = targetUser.displayAvatarURL().includes("a_") ? "gif" : "webp";
+
+                    change = selected;
+                    embed.setFields({
+                        name: languages.general,
+                        value: [
+                            `> **${languages.animated}: ${targetUser.displayAvatarURL().includes(".gif") ? emojis.true : emojis.false}**`,
+                            `> **${languages.serverAvatar}: ${selected === "server" ? emojis.true : emojis.false}**`
+                        ].join("\n")
+                    });
+                    embed.setImage(targetUser.displayAvatarURL({ size: Number(size), extension: userFormat, forceStatic: true }));
+                    changeMenu.components[0].setPlaceholder(`${languages.displayAvatar}: ${userType}`);
+                    formatMenu.components[0].setOptions(userFormats.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${languages.format}: ${userFormat.toUpperCase()}`);
+                    buttons.components[1].setURL(targetUser.displayAvatarURL({ size: Number(size), extension: userFormat, forceStatic: true }));
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+                } else if (i.customId === "size_menu") {
+                    size = i.values[0];
+                    const targetUser = change === "user" ? userFetched : member;
+
+                    embed.setImage(targetUser.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }));
+                    buttons.components[1].setURL(targetUser.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }));
+                    sizeMenu.components[0].setPlaceholder(`${languages.size}: ${size}x${size}`);
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+                } else if (i.customId === "format_menu") {
+                    format = i.values[0];
+                    size = embed.data.image.url.split("?size=")[1];
+                    const targetUser = change === "user" ? userFetched : member;
+
+                    embed.setImage(targetUser.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }));
+                    buttons.components[1].setURL(targetUser.displayAvatarURL({ size: Number(size), extension: format, forceStatic: true }));
+                    formatMenu.components[0].setPlaceholder(`${languages.format}: ${format.toUpperCase()}`);
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
                 }
-            })
-            .on("end", async () => {
-                change_menu.components[0].setDisabled(true)
-                size_menu.components[0].setDisabled(true)
-                format_menu.components[0].setDisabled(true)
-                button.components[0].setDisabled(true)
+            } else if (type === "banner") {
+                if (i.customId === "change-to-avatar") {
+                    type = "avatar";
+                    change = "user";
+                    const avatarFormats = ['png', 'webp', 'jpg', 'jpeg', ...(userFetched.displayAvatarURL().includes(".gif") ? ['gif'] : [])];
+                    const avatarFormat = userFetched.displayAvatarURL().includes("a_") ? "gif" : "webp";
 
-                interaction.editReply({ components: [size_menu, format_menu, change_menu, button] })
-            })
+                    buttons.components[0].setCustomId("change-to-banner").setLabel("Banner").setEmoji(emojis.change);
+                    formatMenu.components[0].setOptions(avatarFormats.map(format => ({ label: format.toUpperCase(), value: format }))).setPlaceholder(`${languages.format}: ${avatarFormat.toUpperCase()}`);
+                    buttons.components[1].setURL(userFetched.displayAvatarURL({ size: Number(size), extension: avatarFormat, forceStatic: true })).setLabel("Avatar Link");
+                    changeMenu.components[0].setPlaceholder(`${languages.displayAvatar}: User`).setOptions({ label: "Server", value: "server", emoji: emojis.change });
+
+                    if (!memberExists || member.displayAvatarURL() === userFetched.displayAvatarURL()) {
+                        changeMenu.components[0].setDisabled(true);
+                    } else {
+                        changeMenu.components[0].setDisabled(false);
+                    }
+
+                    embed.setFields({
+                        name: languages.general,
+                        value: [
+                            `> **${languages.animated}: ${userFetched.displayAvatarURL().includes(".gif") ? emojis.true : emojis.false}**`,
+                            `> **${languages.serverAvatar}: ${emojis.false}**`
+                        ].join("\n")
+                    });
+                    embed.setImage(userFetched.displayAvatarURL({ forceStatic: true, extension: avatarFormat, size: Number(size) }));
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+                } else if (i.customId === "size_menu") {
+                    size = i.values[0];
+
+                    embed.setImage(userFetched.bannerURL({ size: Number(size), extension: format, forceStatic: true }));
+                    buttons.components[1].setURL(userFetched.bannerURL({ size: Number(size), extension: format, forceStatic: true }));
+                    sizeMenu.components[0].setPlaceholder(`${languages.size}: ${size}x${size}`);
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+                } else if (i.customId === "format_menu") {
+                    format = i.values[0];
+                    size = embed.data.image.url.split("?size=")[1];
+
+                    embed.setImage(userFetched.bannerURL({ size: Number(size), extension: format, forceStatic: true }));
+                    buttons.components[1].setURL(userFetched.bannerURL({ size: Number(size), extension: format, forceStatic: true }));
+                    formatMenu.components[0].setPlaceholder(`${languages.format}: ${format.toUpperCase()}`);
+
+                    await i.editReply({ embeds: [embed], components: [sizeMenu, formatMenu, changeMenu, buttons] });
+                }
+            }
+        });
+
+        collector.on("end", async () => {
+            changeMenu.components[0].setDisabled(true);
+            sizeMenu.components[0].setDisabled(true);
+            formatMenu.components[0].setDisabled(true);
+            buttons.components[0].setDisabled(true);
+
+            interaction.editReply({ components: [sizeMenu, formatMenu, changeMenu, buttons] });
+        });
     }
-}
+};
